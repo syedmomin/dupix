@@ -1,0 +1,20 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Two overlapping "duplicate" document sheets with a sparkle. -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:fillAlpha="0.55"
+        android:pathData="M38,34 h24 l10,10 v30 h-34 z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M46,42 h24 l10,10 v30 h-34 z" />
+    <path
+        android:fillColor="#0B6E4F"
+        android:pathData="M70,42 v10 h10 z" />
+    <path
+        android:fillColor="#FFD166"
+        android:pathData="M60,60 l2.2,5.3 l5.8,0.5 l-4.4,3.8 l1.3,5.6 l-4.9,-3 l-4.9,3 l1.3,-5.6 l-4.4,-3.8 l5.8,-0.5 z" />
+</vector>
