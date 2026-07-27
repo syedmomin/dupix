@@ -19,6 +19,20 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    // Optional release signing. In CI the keystore is materialized from a secret and
+    // these env vars are set; locally/without them the release build stays unsigned.
+    val keystorePath = System.getenv("KEYSTORE_FILE")
+    signingConfigs {
+        create("release") {
+            if (!keystorePath.isNullOrBlank()) {
+                storeFile = file(keystorePath)
+                storePassword = System.getenv("KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("KEY_ALIAS")
+                keyPassword = System.getenv("KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true
@@ -27,6 +41,8 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            signingConfig =
+                if (!keystorePath.isNullOrBlank()) signingConfigs.getByName("release") else null
         }
     }
     compileOptions {

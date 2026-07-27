@@ -67,6 +67,18 @@ never re-hashed across scans.
 size bucketing, keep-best, empty-file handling, and reclaimable-bytes math — pure JVM,
 no Android I/O.
 
+## CI / Releases
+
+GitHub Actions build the app automatically:
+
+- **`ci.yml`** — on every push/PR: runs unit tests + builds a debug APK (downloadable
+  from the run's artifacts).
+- **`release.yml`** — on a `v*` tag: builds a signed release **AAB + APK** and publishes
+  a GitHub Release.
+
+Setup (signing secrets, keystore, tagging) is documented in
+[`docs/RELEASE.md`](docs/RELEASE.md).
+
 ## Design spec
 
 `docs/superpowers/specs/2026-07-27-dupix-design.md`
