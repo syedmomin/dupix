@@ -60,7 +60,7 @@ jobs:
             -Dorg.gradle.jvmargs='-Xmx6g -XX:MaxMetaspaceSize=1g -Dfile.encoding=UTF-8'
             -Dkotlin.daemon.jvmargs='-Xmx3g'
         run: |
-          ./gradlew :app:bundleRelease :app:assembleRelease --no-daemon --stacktrace --console=plain --max-workers=2
+          gradle :app:bundleRelease :app:assembleRelease --no-daemon --stacktrace --console=plain --max-workers=2
 
       - name: Collect artifacts
         run: |
