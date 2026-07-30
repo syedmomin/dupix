@@ -35,6 +35,9 @@ jobs:
         with:
           gradle-version: '8.9'
 
+      - name: Make Gradle wrapper executable
+        run: chmod +x ./gradlew
+
       # Decode the signing keystore from a base64 secret, if configured. Without these
       # secrets the release is built unsigned (fine for testing, NOT for Play upload).
       - name: Decode keystore
@@ -60,7 +63,9 @@ jobs:
             -Dorg.gradle.jvmargs='-Xmx6g -XX:MaxMetaspaceSize=1g -Dfile.encoding=UTF-8'
             -Dkotlin.daemon.jvmargs='-Xmx3g'
         run: |
-          gradle :app:bundleRelease :app:assembleRelease --no-daemon --stacktrace --console=plain --max-workers=2
+          set -o pipefail
+          ./gradlew :app:bundleRelease :app:assembleRelease \
+            --no-daemon --stacktrace --console=plain --max-workers=2 2>&1 | tee release-build.log
 
       - name: Collect artifacts
         run: |
@@ -74,6 +79,15 @@ jobs:
         with:
           name: dupix-release
           path: dist/*
+          if-no-files-found: warn
+
+      - name: Upload release build log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-build-log
+          path: release-build.log
+          if-no-files-found: warn
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2

@@ -32,6 +32,9 @@ jobs:
         with:
           gradle-version: '8.9'
 
+      - name: Make Gradle wrapper executable
+        run: chmod +x ./gradlew
+
       - name: Build debug APK (tests + assemble)
         env:
           GRADLE_OPTS: >-
@@ -39,7 +42,7 @@ jobs:
             -Dkotlin.daemon.jvmargs='-Xmx3g'
         run: |
           set -o pipefail
-          gradle :app:testDebugUnitTest :app:assembleDebug \
+          ./gradlew :app:testDebugUnitTest :app:assembleDebug \
             --no-daemon --stacktrace --console=plain --max-workers=2 2>&1 | tee build.log
 
       - name: Upload debug APK
