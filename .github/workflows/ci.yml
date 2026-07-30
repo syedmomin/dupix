@@ -33,10 +33,14 @@ jobs:
           gradle-version: '8.9'
 
       - name: Build debug APK (tests + assemble)
+        env:
+          GRADLE_OPTS: >-
+            -Dorg.gradle.jvmargs='-Xmx6g -XX:MaxMetaspaceSize=1g -Dfile.encoding=UTF-8'
+            -Dkotlin.daemon.jvmargs='-Xmx3g'
         run: |
           set -o pipefail
-          gradle :app:testDebugUnitTest :app:assembleDebug \
-            --no-daemon --stacktrace 2>&1 | tee build.log
+          ./gradlew :app:testDebugUnitTest :app:assembleDebug \
+            --no-daemon --stacktrace --console=plain --max-workers=2 2>&1 | tee build.log
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
@@ -51,6 +55,7 @@ jobs:
         with:
           name: build-log
           path: build.log
+          if-no-files-found: warn
 
       - name: Upload test report on failure
         if: failure()
