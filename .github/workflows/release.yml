@@ -65,7 +65,7 @@ jobs:
             -Dkotlin.daemon.jvmargs='-Xmx3g'
         run: |
           set -o pipefail
-          ./gradlew :app:bundleRelease :app:assembleRelease \
+          gradle :app:bundleRelease :app:assembleRelease \
             --no-daemon --stacktrace --console=plain --max-workers=2 2>&1 | tee release-build.log
 
       - name: Collect artifacts

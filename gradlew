@@ -85,7 +85,7 @@ fi
 if [ "$cygwin" = "false" ] && [ "$darwin" = "false" ] && [ "$nonstop" = "false" ] ; then
     case `ulimit -H -n` in
         0) ;;
-        *) ulimit -n 1000000 ;;
+        *) ulimit -n 1000000 2>/dev/null || true ;;
     esac
 fi
 
