@@ -1,5 +1,7 @@
 package dev.bit.dupix.ui.screens
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -9,8 +11,13 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -18,13 +25,24 @@ import kotlinx.coroutines.delay
 
 @Composable
 fun SplashScreen(onDone: () -> Unit) {
+    var alpha by remember { mutableFloatStateOf(0f) }
+    var scale by remember { mutableFloatStateOf(0.85f) }
+
     LaunchedEffect(Unit) {
-        delay(900)
+        val anim = Animatable(0f)
+        anim.animateTo(1f, animationSpec = tween(durationMillis = 500)) {
+            alpha = value
+            scale = 0.85f + 0.15f * value
+        }
+        delay(500)
         onDone()
     }
     Surface(color = MaterialTheme.colorScheme.primary, modifier = Modifier.fillMaxSize()) {
         Column(
-            modifier = Modifier.fillMaxSize().padding(32.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(32.dp)
+                .graphicsLayer(alpha = alpha, scaleX = scale, scaleY = scale),
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
