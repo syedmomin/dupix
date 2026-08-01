@@ -4,6 +4,8 @@ package dev.bit.dupix.domain.model
 data class ScanResult(
     val groupsByCategory: Map<FileCategory, List<DuplicateGroup>>,
     val largeFiles: List<FileItem>,
+    /** Total files the scan enumerated (before duplicate detection) — for the "scanned N files" label. */
+    val totalScanned: Int = 0,
 ) {
     fun groups(category: FileCategory): List<DuplicateGroup> =
         groupsByCategory[category].orEmpty()

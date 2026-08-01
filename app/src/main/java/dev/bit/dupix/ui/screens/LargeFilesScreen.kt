@@ -5,6 +5,7 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -26,12 +27,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import dev.bit.dupix.domain.model.FileItem
 import dev.bit.dupix.ui.ScanViewModel
+import dev.bit.dupix.ui.components.DeletingOverlay
 import dev.bit.dupix.ui.components.EmptyState
 import dev.bit.dupix.ui.components.PrimaryButton
 import dev.bit.dupix.ui.components.SelectableTile
@@ -43,23 +47,30 @@ import kotlinx.coroutines.launch
 fun LargeFilesScreen(
     vm: ScanViewModel,
     onBack: () -> Unit,
+    onDeleteComplete: () -> Unit,
 ) {
     val result by vm.result.collectAsState()
     val files = result?.largeFiles.orEmpty()
     val scope = rememberCoroutineScope()
 
     val selected = remember { mutableStateMapOf<Uri, Boolean>() }
-    val pendingMedia = remember { mutableStateMapOf<Uri, Boolean>() }
+    var deleting by remember { mutableStateOf(false) }
+    var pendingMediaUris by remember { mutableStateOf<Set<Uri>>(emptySet()) }
+
+    fun finishAndGoHome() {
+        deleting = false
+        onDeleteComplete()
+    }
 
     val deleteLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartIntentSenderForResult()
     ) { activityResult ->
         if (activityResult.resultCode == Activity.RESULT_OK) {
-            val removed = pendingMedia.keys.toSet()
-            vm.onDeleted(removed)
-            removed.forEach { selected.remove(it) }
+            vm.onDeleted(pendingMediaUris)
+            pendingMediaUris.forEach { selected.remove(it) }
         }
-        pendingMedia.clear()
+        pendingMediaUris = emptySet()
+        finishAndGoHome()
     }
 
     fun selectedItems(): List<FileItem> = files.filter { selected[it.uri] == true }
@@ -67,73 +78,79 @@ fun LargeFilesScreen(
     fun deleteSelected() {
         val items = selectedItems()
         if (items.isEmpty()) return
-        val media = items.filter { it.mediaId != null }
-        val saf = items.filter { it.mediaId == null }
-        if (saf.isNotEmpty()) {
-            scope.launch {
+        deleting = true
+        scope.launch {
+            val media = items.filter { it.mediaId != null }
+            val saf = items.filter { it.mediaId == null }
+            if (saf.isNotEmpty()) {
                 vm.deleteSaf(saf)
                 val uris = saf.map { it.uri }.toSet()
                 vm.onDeleted(uris)
                 uris.forEach { selected.remove(it) }
             }
-        }
-        if (media.isNotEmpty()) {
-            val sender = vm.buildMediaDeleteRequest(media) ?: return
-            pendingMedia.clear()
-            media.forEach { pendingMedia[it.uri] = true }
-            deleteLauncher.launch(IntentSenderRequest.Builder(sender).build())
+            val sender = if (media.isNotEmpty()) vm.buildMediaDeleteRequest(media) else null
+            if (sender != null) {
+                pendingMediaUris = media.map { it.uri }.toSet()
+                deleteLauncher.launch(IntentSenderRequest.Builder(sender).build())
+            } else {
+                finishAndGoHome()
+            }
         }
     }
 
     val count = selectedItems().size
     val bytes = selectedItems().sumOf { it.size }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Large Files") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-            )
-        },
-        bottomBar = {
-            if (count > 0) {
-                PrimaryButton(
-                    text = "Delete $count · ${formatBytes(bytes)}",
-                    onClick = { deleteSelected() },
-                    modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(16.dp),
+    Box(Modifier.fillMaxSize()) {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = { Text("Large Files") },
+                    navigationIcon = {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        }
+                    },
                 )
-            }
-        },
-    ) { padding ->
-        if (files.isEmpty()) {
-            EmptyState(
-                icon = Icons.Default.FolderOff,
-                title = "No large files found",
-                modifier = Modifier.padding(padding),
-            )
-            return@Scaffold
-        }
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(3),
-            modifier = Modifier.fillMaxSize().padding(padding),
-            contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 16.dp),
-        ) {
-            itemsIndexed(files, key = { i, _ -> "large_$i" }) { _, file ->
-                SelectableTile(
-                    uri = file.uri,
-                    category = file.category,
-                    displayName = file.displayName,
-                    sizeBytes = file.size,
-                    checked = selected[file.uri] == true,
-                    isKeep = false,
-                    selectable = true,
-                    onToggle = { selected[file.uri] = it },
+            },
+            bottomBar = {
+                if (count > 0) {
+                    PrimaryButton(
+                        text = "Delete $count · ${formatBytes(bytes)}",
+                        onClick = { deleteSelected() },
+                        modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(16.dp),
+                    )
+                }
+            },
+        ) { padding ->
+            if (files.isEmpty()) {
+                EmptyState(
+                    icon = Icons.Default.FolderOff,
+                    title = "No large files found",
+                    modifier = Modifier.padding(padding),
                 )
+                return@Scaffold
+            }
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(3),
+                modifier = Modifier.fillMaxSize().padding(padding),
+                contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 16.dp),
+            ) {
+                itemsIndexed(files, key = { i, _ -> "large_$i" }) { _, file ->
+                    SelectableTile(
+                        uri = file.uri,
+                        category = file.category,
+                        displayName = file.displayName,
+                        sizeBytes = file.size,
+                        checked = selected[file.uri] == true,
+                        isKeep = false,
+                        selectable = true,
+                        onToggle = { selected[file.uri] = it },
+                    )
+                }
             }
         }
+
+        DeletingOverlay(visible = deleting)
     }
 }

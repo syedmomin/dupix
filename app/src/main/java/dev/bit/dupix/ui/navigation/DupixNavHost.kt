@@ -65,11 +65,20 @@ fun DupixNavHost(vm: ScanViewModel) {
         ) { entry ->
             val categoryName = entry.arguments?.getString("category") ?: FileCategory.PHOTO.name
             val category = runCatching { FileCategory.valueOf(categoryName) }.getOrDefault(FileCategory.PHOTO)
-            GroupListScreen(vm = vm, category = category, onBack = { nav.popBackStack() })
+            GroupListScreen(
+                vm = vm,
+                category = category,
+                onBack = { nav.popBackStack() },
+                onDeleteComplete = { nav.popBackStack(Screen.Home.route, inclusive = false) },
+            )
         }
 
         composable(Screen.Large.route) {
-            LargeFilesScreen(vm = vm, onBack = { nav.popBackStack() })
+            LargeFilesScreen(
+                vm = vm,
+                onBack = { nav.popBackStack() },
+                onDeleteComplete = { nav.popBackStack(Screen.Home.route, inclusive = false) },
+            )
         }
 
         composable(Screen.Settings.route) {

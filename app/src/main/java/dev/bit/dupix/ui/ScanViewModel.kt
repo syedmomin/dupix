@@ -104,7 +104,7 @@ class ScanViewModel @Inject constructor(
             groups.mapNotNull { it.withoutUris(uris) }
         }
         val newLarge = current.largeFiles.filterNot { it.uri in uris }
-        _result.value = ScanResult(newGroups, newLarge)
+        _result.value = ScanResult(newGroups, newLarge, totalScanned = current.totalScanned)
         refreshStorage()
     }
 

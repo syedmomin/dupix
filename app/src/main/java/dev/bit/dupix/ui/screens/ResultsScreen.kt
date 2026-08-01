@@ -92,7 +92,7 @@ fun ResultsScreen(
                 start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp,
             ),
         ) {
-            item { RecoverableHeader(res.totalReclaimableBytes, res.totalDuplicateFiles) }
+            item { RecoverableHeader(res.totalReclaimableBytes, res.totalDuplicateFiles, res.totalScanned) }
 
             itemsIndexed(dupCategories) { index, cat ->
                 val groups = res.groups(cat)
@@ -128,7 +128,7 @@ fun ResultsScreen(
 }
 
 @Composable
-private fun RecoverableHeader(reclaimableBytes: Long, duplicateFiles: Int) {
+private fun RecoverableHeader(reclaimableBytes: Long, duplicateFiles: Int, totalScanned: Int) {
     Card(
         modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary),
@@ -147,7 +147,7 @@ private fun RecoverableHeader(reclaimableBytes: Long, duplicateFiles: Int) {
                 fontWeight = FontWeight.Bold,
             )
             Text(
-                "$duplicateFiles duplicate files found",
+                "$duplicateFiles duplicate files · $totalScanned files scanned",
                 color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f),
                 style = MaterialTheme.typography.bodyMedium,
             )

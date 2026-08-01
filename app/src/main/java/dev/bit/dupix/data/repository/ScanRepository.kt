@@ -96,7 +96,7 @@ class ScanRepository @Inject constructor(
                     .sortedByDescending { it.size }
             else emptyList()
 
-        emit(ScanProgress.Done(ScanResult(groupsByCategory, largeFiles)))
+        emit(ScanProgress.Done(ScanResult(groupsByCategory, largeFiles, totalScanned = allEnumerated.size)))
     }
 
     /** Count of files that will be hashed (size buckets with 2+ members). No I/O. */

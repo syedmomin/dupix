@@ -5,6 +5,7 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -28,14 +29,17 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import dev.bit.dupix.domain.model.FileCategory
 import dev.bit.dupix.domain.model.FileItem
 import dev.bit.dupix.ui.ScanViewModel
+import dev.bit.dupix.ui.components.DeletingOverlay
 import dev.bit.dupix.ui.components.EmptyState
 import dev.bit.dupix.ui.components.PrimaryButton
 import dev.bit.dupix.ui.components.SelectableTile
@@ -48,29 +52,35 @@ fun GroupListScreen(
     vm: ScanViewModel,
     category: FileCategory,
     onBack: () -> Unit,
+    onDeleteComplete: () -> Unit,
 ) {
     val result by vm.result.collectAsState()
     val groups = result?.groups(category).orEmpty()
     val scope = rememberCoroutineScope()
 
-    // Selected URIs -> deletable. Duplicates start selected; kept files are never selectable.
     val selected = remember(category) { mutableStateMapOf<Uri, Boolean>() }
     remember(groups) {
         groups.forEach { g -> g.duplicates.forEach { d -> selected.putIfAbsent(d.uri, true) } }
         true
     }
 
-    val pendingMedia = remember { mutableStateMapOf<Uri, Boolean>() }
+    var deleting by remember { mutableStateOf(false) }
+    var pendingMediaUris by remember { mutableStateOf<Set<Uri>>(emptySet()) }
+
+    fun finishAndGoHome() {
+        deleting = false
+        onDeleteComplete()
+    }
 
     val deleteLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartIntentSenderForResult()
     ) { activityResult ->
         if (activityResult.resultCode == Activity.RESULT_OK) {
-            val removed = pendingMedia.keys.toSet()
-            vm.onDeleted(removed)
-            removed.forEach { selected.remove(it) }
+            vm.onDeleted(pendingMediaUris)
+            pendingMediaUris.forEach { selected.remove(it) }
         }
-        pendingMedia.clear()
+        pendingMediaUris = emptySet()
+        finishAndGoHome()
     }
 
     fun selectedItems(): List<FileItem> =
@@ -79,22 +89,23 @@ fun GroupListScreen(
     fun deleteSelected() {
         val items = selectedItems()
         if (items.isEmpty()) return
-        val media = items.filter { it.mediaId != null }
-        val saf = items.filter { it.mediaId == null }
-        if (saf.isNotEmpty()) {
-            scope.launch {
+        deleting = true
+        scope.launch {
+            val media = items.filter { it.mediaId != null }
+            val saf = items.filter { it.mediaId == null }
+            if (saf.isNotEmpty()) {
                 vm.deleteSaf(saf)
                 val uris = saf.map { it.uri }.toSet()
                 vm.onDeleted(uris)
                 uris.forEach { selected.remove(it) }
             }
-        }
-        if (media.isNotEmpty()) {
-            val sender = vm.buildMediaDeleteRequest(media)
+            val sender = if (media.isNotEmpty()) vm.buildMediaDeleteRequest(media) else null
             if (sender != null) {
-                pendingMedia.clear()
-                media.forEach { pendingMedia[it.uri] = true }
+                // System delete-confirmation dialog; completion handled in the launcher.
+                pendingMediaUris = media.map { it.uri }.toSet()
                 deleteLauncher.launch(IntentSenderRequest.Builder(sender).build())
+            } else {
+                finishAndGoHome()
             }
         }
     }
@@ -102,64 +113,68 @@ fun GroupListScreen(
     val selectedCount = selectedItems().size
     val selectedBytes = selectedItems().sumOf { it.size }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(category.label) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-            )
-        },
-        bottomBar = {
-            if (selectedCount > 0) {
-                PrimaryButton(
-                    text = "Delete $selectedCount · ${formatBytes(selectedBytes)}",
-                    onClick = { deleteSelected() },
-                    modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(16.dp),
+    Box(Modifier.fillMaxSize()) {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = { Text(category.label) },
+                    navigationIcon = {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        }
+                    },
                 )
-            }
-        },
-    ) { padding ->
-        if (groups.isEmpty()) {
-            EmptyState(
-                icon = Icons.Default.SearchOff,
-                title = "No duplicates",
-                subtitle = "Nothing to clean up in ${category.label}.",
-                modifier = Modifier.padding(padding),
-            )
-            return@Scaffold
-        }
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(3),
-            modifier = Modifier.fillMaxSize().padding(padding),
-            contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 16.dp),
-        ) {
-            groups.forEachIndexed { index, group ->
-                item(span = { GridItemSpan(maxLineSpan) }, key = "h_${group.hash}") {
-                    Text(
-                        "Group ${index + 1} · ${group.files.size} copies · ${formatBytes(group.reclaimableBytes)} recoverable",
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp),
+            },
+            bottomBar = {
+                if (selectedCount > 0) {
+                    PrimaryButton(
+                        text = "Delete $selectedCount · ${formatBytes(selectedBytes)}",
+                        onClick = { deleteSelected() },
+                        modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(16.dp),
                     )
                 }
-                itemsIndexed(group.files, key = { i, _ -> "${group.hash}_$i" }) { _, file ->
-                    val keep = file.uri == group.keep.uri
-                    SelectableTile(
-                        uri = file.uri,
-                        category = file.category,
-                        displayName = file.displayName,
-                        sizeBytes = file.size,
-                        checked = selected[file.uri] == true,
-                        isKeep = keep,
-                        selectable = !keep,
-                        onToggle = { selected[file.uri] = it },
-                    )
+            },
+        ) { padding ->
+            if (groups.isEmpty()) {
+                EmptyState(
+                    icon = Icons.Default.SearchOff,
+                    title = "No duplicates",
+                    subtitle = "Nothing to clean up in ${category.label}.",
+                    modifier = Modifier.padding(padding),
+                )
+                return@Scaffold
+            }
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(3),
+                modifier = Modifier.fillMaxSize().padding(padding),
+                contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 16.dp),
+            ) {
+                groups.forEachIndexed { index, group ->
+                    item(span = { GridItemSpan(maxLineSpan) }, key = "h_${group.hash}") {
+                        Text(
+                            "Group ${index + 1} · ${group.files.size} copies · ${formatBytes(group.reclaimableBytes)} recoverable",
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp),
+                        )
+                    }
+                    itemsIndexed(group.files, key = { i, _ -> "${group.hash}_$i" }) { _, file ->
+                        val keep = file.uri == group.keep.uri
+                        SelectableTile(
+                            uri = file.uri,
+                            category = file.category,
+                            displayName = file.displayName,
+                            sizeBytes = file.size,
+                            checked = selected[file.uri] == true,
+                            isKeep = keep,
+                            selectable = !keep,
+                            onToggle = { selected[file.uri] = it },
+                        )
+                    }
                 }
             }
         }
+
+        DeletingOverlay(visible = deleting)
     }
 }
