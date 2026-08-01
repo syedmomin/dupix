@@ -146,7 +146,7 @@ fun GroupListScreen(
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp),
                     )
                 }
-                items(group.files, key = { it.uri.toString() }) { file ->
+                items(group.files, key = { "${group.hash}_${it.uri}" }) { file ->
                     val keep = file.uri == group.keep.uri
                     SelectableTile(
                         uri = file.uri,
