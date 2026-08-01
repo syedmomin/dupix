@@ -7,6 +7,9 @@ on:
     branches: [ main, master ]
   workflow_dispatch:
 
+permissions:
+  contents: write   # allow the failure step to push the log to ci-diagnostics
+
 jobs:
   build:
     name: Test & build debug APK
