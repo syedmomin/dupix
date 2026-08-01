@@ -5,23 +5,20 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.FolderOff
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -31,16 +28,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.bit.dupix.domain.model.FileItem
 import dev.bit.dupix.ui.ScanViewModel
-import dev.bit.dupix.ui.components.AnimatedListItem
 import dev.bit.dupix.ui.components.EmptyState
 import dev.bit.dupix.ui.components.PrimaryButton
+import dev.bit.dupix.ui.components.SelectableTile
 import dev.bit.dupix.ui.util.formatBytes
 import kotlinx.coroutines.launch
 
@@ -123,35 +117,22 @@ fun LargeFilesScreen(
             )
             return@Scaffold
         }
-        LazyColumn(modifier = Modifier.fillMaxSize().padding(padding)) {
-            itemsIndexed(files, key = { _, file -> file.uri.toString() }) { index, file ->
-                AnimatedListItem(index = index) {
-                    Column {
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(16.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Column(Modifier.weight(1f)) {
-                                Text(
-                                    file.displayName,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                                Text(
-                                    formatBytes(file.size),
-                                    style = MaterialTheme.typography.labelMedium,
-                                    fontWeight = FontWeight.Bold,
-                                )
-                            }
-                            Checkbox(
-                                checked = selected[file.uri] == true,
-                                onCheckedChange = { selected[file.uri] = it },
-                            )
-                        }
-                        HorizontalDivider()
-                    }
-                }
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(3),
+            modifier = Modifier.fillMaxSize().padding(padding),
+            contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 16.dp),
+        ) {
+            items(files, key = { it.uri.toString() }) { file ->
+                SelectableTile(
+                    uri = file.uri,
+                    category = file.category,
+                    displayName = file.displayName,
+                    sizeBytes = file.size,
+                    checked = selected[file.uri] == true,
+                    isKeep = false,
+                    selectable = true,
+                    onToggle = { selected[file.uri] = it },
+                )
             }
         }
     }

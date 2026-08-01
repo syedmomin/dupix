@@ -7,7 +7,9 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -17,6 +19,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import dev.bit.dupix.domain.model.ScanProgress
@@ -41,47 +44,51 @@ fun ScanProgressScreen(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
+        val failed = progress as? ScanProgress.Failed
+        if (failed != null) {
+            Text("Scan failed", style = MaterialTheme.typography.titleLarge)
+            Text(failed.message, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 8.dp))
+            PrimaryButton(text = "Back", onClick = onBack, modifier = Modifier.padding(top = 24.dp))
+            return@Column
+        }
+
+        Text(
+            "Scanning your device",
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+        )
+        Spacer(Modifier.height(28.dp))
+
         AnimatedContent(
             targetState = progress,
             transitionSpec = { fadeIn(tween(250)) togetherWith fadeOut(tween(250)) },
             label = "scanProgressState",
         ) { p ->
-            when (p) {
-                is ScanProgress.Hashing -> {
-                    val fraction = if (p.total > 0) p.processed.toFloat() / p.total else 0f
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                when (p) {
+                    is ScanProgress.Hashing -> {
+                        val fraction = if (p.total > 0) p.processed.toFloat() / p.total else 0f
                         AnimatedProgressRing(progress = fraction.coerceIn(0f, 1f))
                         Text(
-                            "Analyzing files…\n${p.processed} / ${p.total}",
+                            "Analyzing for duplicates…\n${p.processed} / ${p.total}",
                             textAlign = TextAlign.Center,
                             style = MaterialTheme.typography.titleMedium,
                             modifier = Modifier.padding(top = 24.dp),
                         )
                     }
-                }
-                is ScanProgress.Enumerating -> {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    is ScanProgress.Enumerating -> {
                         AnimatedProgressRing(progress = null)
                         Text(
-                            "Scanning ${p.category.label}…\n${p.filesFound} files found",
+                            "Finding files…\n${p.filesFound} files found",
                             textAlign = TextAlign.Center,
                             style = MaterialTheme.typography.titleMedium,
                             modifier = Modifier.padding(top = 24.dp),
                         )
                     }
-                }
-                is ScanProgress.Failed -> {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("Scan failed", style = MaterialTheme.typography.titleLarge)
-                        Text(p.message, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 8.dp))
-                        PrimaryButton(text = "Back", onClick = onBack, modifier = Modifier.padding(top = 24.dp))
-                    }
-                }
-                else -> {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    else -> {
                         AnimatedProgressRing(progress = null)
                         Text(
-                            "Preparing scan…",
+                            "Preparing…",
                             style = MaterialTheme.typography.titleMedium,
                             modifier = Modifier.padding(top = 24.dp),
                         )

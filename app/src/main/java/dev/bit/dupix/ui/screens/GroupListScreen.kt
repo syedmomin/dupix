@@ -5,17 +5,22 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.SearchOff
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -26,14 +31,14 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import dev.bit.dupix.domain.model.FileCategory
 import dev.bit.dupix.domain.model.FileItem
 import dev.bit.dupix.ui.ScanViewModel
-import dev.bit.dupix.ui.components.AnimatedListItem
-import dev.bit.dupix.ui.components.DuplicateGroupCard
 import dev.bit.dupix.ui.components.EmptyState
 import dev.bit.dupix.ui.components.PrimaryButton
+import dev.bit.dupix.ui.components.SelectableTile
 import dev.bit.dupix.ui.util.formatBytes
 import kotlinx.coroutines.launch
 
@@ -55,7 +60,6 @@ fun GroupListScreen(
         true
     }
 
-    // Track which URIs a pending media delete request will remove.
     val pendingMedia = remember { mutableStateMapOf<Uri, Boolean>() }
 
     val deleteLauncher = rememberLauncherForActivityResult(
@@ -77,7 +81,6 @@ fun GroupListScreen(
         if (items.isEmpty()) return
         val media = items.filter { it.mediaId != null }
         val saf = items.filter { it.mediaId == null }
-
         if (saf.isNotEmpty()) {
             scope.launch {
                 vm.deleteSaf(saf)
@@ -129,17 +132,32 @@ fun GroupListScreen(
             )
             return@Scaffold
         }
-        LazyColumn(modifier = Modifier.fillMaxSize().padding(padding)) {
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(3),
+            modifier = Modifier.fillMaxSize().padding(padding),
+            contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 16.dp),
+        ) {
             groups.forEachIndexed { index, group ->
-                item(key = group.hash) {
-                    AnimatedListItem(index = index) {
-                        DuplicateGroupCard(
-                            group = group,
-                            isSelected = { uri -> selected[uri] == true },
-                            onToggle = { uri, value -> selected[uri] = value },
-                            index = index + 1,
-                        )
-                    }
+                item(span = { GridItemSpan(maxLineSpan) }, key = "h_${group.hash}") {
+                    Text(
+                        "Group ${index + 1} · ${group.files.size} copies · ${formatBytes(group.reclaimableBytes)} recoverable",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp),
+                    )
+                }
+                items(group.files, key = { it.uri.toString() }) { file ->
+                    val keep = file.uri == group.keep.uri
+                    SelectableTile(
+                        uri = file.uri,
+                        category = file.category,
+                        displayName = file.displayName,
+                        sizeBytes = file.size,
+                        checked = selected[file.uri] == true,
+                        isKeep = keep,
+                        selectable = !keep,
+                        onToggle = { selected[file.uri] = it },
+                    )
                 }
             }
         }

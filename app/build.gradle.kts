@@ -90,6 +90,7 @@ dependencies {
 
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.coil.compose)
+    implementation("io.coil-kt:coil-video:2.7.0")
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
