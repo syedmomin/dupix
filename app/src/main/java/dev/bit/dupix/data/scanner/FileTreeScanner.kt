@@ -23,15 +23,24 @@ class FileTreeScanner @Inject constructor() {
         val stack = ArrayDeque<File>()
         stack.addLast(root)
         var count = 0
+        // Guard against the same path being reached twice (symlinks / bind mounts / the
+        // same storage volume exposed via multiple routes). Without this a file can be
+        // emitted twice and get grouped as a "duplicate of itself".
+        val seenDirs = HashSet<String>()
+        val seenFiles = HashSet<String>()
 
         while (stack.isNotEmpty()) {
             val dir = stack.removeLast()
             if (shouldSkip(dir)) continue
+            val dirKey = runCatching { dir.canonicalPath }.getOrDefault(dir.absolutePath)
+            if (!seenDirs.add(dirKey)) continue
             val children = dir.listFiles() ?: continue
             for (child in children) {
                 if (child.isDirectory) {
                     stack.addLast(child)
                 } else if (child.isFile) {
+                    val key = runCatching { child.canonicalPath }.getOrDefault(child.absolutePath)
+                    if (!seenFiles.add(key)) continue
                     val size = child.length()
                     out += FileItem(
                         uri = Uri.fromFile(child),

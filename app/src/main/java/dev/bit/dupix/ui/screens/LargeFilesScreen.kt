@@ -12,7 +12,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.FolderOff
@@ -122,7 +122,7 @@ fun LargeFilesScreen(
             modifier = Modifier.fillMaxSize().padding(padding),
             contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 16.dp),
         ) {
-            items(files, key = { it.uri.toString() }) { file ->
+            itemsIndexed(files, key = { i, _ -> "large_$i" }) { _, file ->
                 SelectableTile(
                     uri = file.uri,
                     category = file.category,

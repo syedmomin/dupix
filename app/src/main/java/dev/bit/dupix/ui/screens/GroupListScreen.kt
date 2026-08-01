@@ -13,7 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.SearchOff
@@ -146,7 +146,7 @@ fun GroupListScreen(
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp),
                     )
                 }
-                items(group.files, key = { "${group.hash}_${it.uri}" }) { file ->
+                itemsIndexed(group.files, key = { i, _ -> "${group.hash}_$i" }) { _, file ->
                     val keep = file.uri == group.keep.uri
                     SelectableTile(
                         uri = file.uri,

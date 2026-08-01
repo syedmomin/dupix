@@ -28,8 +28,9 @@ class DuplicateFinder(private val hasher: Hasher) {
         onHashProgress: suspend (processed: Int, total: Int) -> Unit = { _, _ -> },
     ): List<DuplicateGroup> {
         // Stage 1: bucket by size (ignore empty files — grouping zero-byte files as
-        // "duplicates" is noise, not recoverable space).
-        val bySize = files.filter { it.size > 0 }.groupBy { it.size }
+        // "duplicates" is noise, not recoverable space). Dedupe by URI first so the same
+        // physical file can never be grouped as a duplicate of itself.
+        val bySize = files.distinctBy { it.uri }.filter { it.size > 0 }.groupBy { it.size }
         val sizeCandidates = bySize.values.filter { it.size > 1 }
 
         // Total files that will be hashed at least once (partial pass).
