@@ -64,8 +64,12 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          # Keep only the interesting lines to stay well under API size limits.
-          grep -aE "e: |error:|> Task|FAILURE|Caused by|Execution failed|What went wrong|Unresolved|expected|mismatch" build.log | tail -c 200000 > errors.txt || true
+          # Capture compile errors AND unit-test failure stack traces (from the XML report).
+          {
+            grep -aE "e: |error:|> Task|FAILURE|Caused by|Execution failed|What went wrong|Unresolved|expected|mismatch" build.log
+            echo "===== UNIT TEST RESULTS (XML) ====="
+            cat app/build/test-results/testDebugUnitTest/*.xml 2>/dev/null || echo "(no test XML)"
+          } | tail -c 300000 > errors.txt || true
           CONTENT=$(base64 -w0 errors.txt)
           curl -sS -X PUT \
             -H "Authorization: token $GH_TOKEN" \
