@@ -9,14 +9,15 @@ import dev.bit.dupix.domain.model.FileItem
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.mockito.Mockito
 import java.io.ByteArrayInputStream
 import java.io.InputStream
 import org.junit.Test
 
 /**
  * Pure-JVM tests for the staged duplicate pipeline. Files are in-memory byte arrays keyed
- * by path, so no Android I/O is involved. (Uri methods return default null under
- * unitTests.isReturnDefaultValues; the finder never dereferences them.)
+ * by path, so no Android I/O is involved. The Uri on each FileItem is a Mockito mock
+ * because the finder never dereferences it.
  */
 class DuplicateFinderTest {
 
@@ -27,7 +28,9 @@ class DuplicateFinderTest {
     private fun file(path: String, bytes: ByteArray, lastModified: Long = 0L): FileItem {
         store[path] = bytes
         return FileItem(
-            uri = Uri.parse("file://$path"),
+            // Uri is irrelevant to the finder (it hashes via StreamOpener keyed by path);
+            // a mock avoids Uri.parse's @NonNull assertion under plain JVM unit tests.
+            uri = Mockito.mock(Uri::class.java),
             displayName = path.substringAfterLast('/'),
             path = path,
             size = bytes.size.toLong(),
