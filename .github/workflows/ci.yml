@@ -33,18 +33,22 @@ jobs:
           gradle-version: '8.9'
           validate-wrappers: false
 
-      - name: Make Gradle wrapper executable
-        run: chmod +x ./gradlew
+      # Use the `gradle` binary provided by setup-gradle (not ./gradlew). The build is
+      # split into granular steps so that if one fails, the failing task is obvious from
+      # the step name alone. Memory settings come from gradle.properties.
+      - name: Gradle version
+        run: gradle --version --no-daemon
 
-      - name: Build debug APK (tests + assemble)
-        env:
-          GRADLE_OPTS: >-
-            -Dorg.gradle.jvmargs='-Xmx6g -XX:MaxMetaspaceSize=1g -Dfile.encoding=UTF-8'
-            -Dkotlin.daemon.jvmargs='-Xmx3g'
+      - name: Compile debug (Kotlin + KSP)
+        run: gradle :app:compileDebugKotlin --no-daemon --stacktrace --console=plain
+
+      - name: Unit tests
+        run: gradle :app:testDebugUnitTest --no-daemon --stacktrace --console=plain
+
+      - name: Assemble debug APK
         run: |
           set -o pipefail
-          ./gradlew :app:testDebugUnitTest :app:assembleDebug \
-            --no-daemon --stacktrace --console=plain --max-workers=2 2>&1 | tee build.log
+          gradle :app:assembleDebug --no-daemon --stacktrace --console=plain 2>&1 | tee build.log
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
