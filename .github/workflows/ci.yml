@@ -64,19 +64,14 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          grep -E "^(e: |w: |> Task|FAILURE|Caused by|.*error:|.*: error)" build.log > errors.txt || true
-          git config user.email "ci@local"
-          git config user.name "ci"
-          git checkout --orphan ci-diagnostics
-          git reset
-          cp build.log /tmp/build.log; cp errors.txt /tmp/errors.txt
-          rm -rf ./* 2>/dev/null || true
-          mkdir -p ci-out
-          cp /tmp/build.log ci-out/build.log
-          cp /tmp/errors.txt ci-out/errors.txt
-          git add ci-out/build.log ci-out/errors.txt
-          git commit -m "CI diagnostics for ${GITHUB_SHA}"
-          git push -f origin ci-diagnostics
+          # Keep only the interesting lines to stay well under API size limits.
+          grep -aE "e: |error:|> Task|FAILURE|Caused by|Execution failed|What went wrong|Unresolved|expected|mismatch" build.log | tail -c 200000 > errors.txt || true
+          CONTENT=$(base64 -w0 errors.txt)
+          curl -sS -X PUT \
+            -H "Authorization: token $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/contents/ci-diagnostics/${GITHUB_SHA}.txt" \
+            -d "{\"message\":\"CI diagnostics ${GITHUB_SHA} [skip ci]\",\"content\":\"${CONTENT}\",\"branch\":\"main\"}"
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
