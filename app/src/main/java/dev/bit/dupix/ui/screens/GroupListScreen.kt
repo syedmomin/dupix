@@ -7,6 +7,7 @@ import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
@@ -114,7 +115,7 @@ fun GroupListScreen(
                 PrimaryButton(
                     text = "Delete $selectedCount · ${formatBytes(selectedBytes)}",
                     onClick = { deleteSelected() },
-                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(16.dp),
                 )
             }
         },

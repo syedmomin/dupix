@@ -69,12 +69,17 @@ class ScanViewModel @Inject constructor(
         safTreeUri = uri
     }
 
-    fun startScan(categories: Set<FileCategory>, largeFileThreshold: Long) {
+    fun startScan(
+        categories: Set<FileCategory>,
+        largeFileThreshold: Long,
+        deepScan: Boolean = false,
+    ) {
         scanManager.submit(
             ScanConfig(
                 categories = categories,
                 largeFileThreshold = largeFileThreshold,
                 safTreeUri = safTreeUri,
+                deepScan = deepScan,
             )
         )
         ScanService.start(appContext)

@@ -15,4 +15,6 @@ data class ScanConfig(
     val categories: Set<FileCategory> = FileCategory.entries.toSet(),
     val largeFileThreshold: Long = 100L * 1024 * 1024,
     val safTreeUri: Uri? = null,
+    /** When true, walk the whole shared storage with java.io.File (needs All files access). */
+    val deepScan: Boolean = false,
 )

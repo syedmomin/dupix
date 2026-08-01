@@ -31,7 +31,10 @@ class DeleteRepository @Inject constructor(
     }
 
     /**
-     * Deletes SAF-sourced [items] directly. Assumes the tree URI permission is held.
+     * Deletes non-media [items] directly:
+     *  - `file://` items (deep scan, All files access) via [java.io.File.delete].
+     *  - SAF `content://` items via DocumentsContract (needs the tree permission).
+     * Media (MediaStore) items are skipped here — they go through [createMediaDeleteRequest].
      * @return bytes successfully freed.
      */
     suspend fun deleteSaf(items: List<FileItem>): Long = withContext(Dispatchers.IO) {
@@ -39,7 +42,12 @@ class DeleteRepository @Inject constructor(
         for (item in items) {
             if (item.mediaId != null) continue // media handled via delete request
             val ok = runCatching {
-                DocumentsContract.deleteDocument(resolver, item.uri)
+                if (item.uri.scheme == "file") {
+                    val path = item.uri.path
+                    path != null && java.io.File(path).delete()
+                } else {
+                    DocumentsContract.deleteDocument(resolver, item.uri)
+                }
             }.getOrDefault(false)
             if (ok) freed += item.size
         }
