@@ -25,6 +25,7 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import dev.bit.dupix.domain.model.FileCategory
 import dev.bit.dupix.domain.model.FileItem
 import dev.bit.dupix.ui.ScanViewModel
