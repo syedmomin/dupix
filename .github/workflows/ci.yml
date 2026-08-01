@@ -40,15 +40,40 @@ jobs:
         run: gradle --version --no-daemon
 
       - name: Compile debug (Kotlin + KSP)
-        run: gradle :app:compileDebugKotlin --no-daemon --stacktrace --console=plain
+        run: |
+          set -o pipefail
+          gradle :app:compileDebugKotlin --no-daemon --stacktrace --console=plain 2>&1 | tee build.log
 
       - name: Unit tests
-        run: gradle :app:testDebugUnitTest --no-daemon --stacktrace --console=plain
+        run: |
+          set -o pipefail
+          gradle :app:testDebugUnitTest --no-daemon --stacktrace --console=plain 2>&1 | tee -a build.log
 
       - name: Assemble debug APK
         run: |
           set -o pipefail
-          gradle :app:assembleDebug --no-daemon --stacktrace --console=plain 2>&1 | tee build.log
+          gradle :app:assembleDebug --no-daemon --stacktrace --console=plain 2>&1 | tee -a build.log
+
+      # If anything above failed, publish the captured log to a diagnostics branch so it
+      # can be read via the public raw URL (Actions logs/artifacts need auth to download).
+      - name: Publish build log on failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          grep -E "^(e: |w: |> Task|FAILURE|Caused by|.*error:|.*: error)" build.log > errors.txt || true
+          git config user.email "ci@local"
+          git config user.name "ci"
+          git checkout --orphan ci-diagnostics
+          git reset
+          cp build.log /tmp/build.log; cp errors.txt /tmp/errors.txt
+          rm -rf ./* 2>/dev/null || true
+          mkdir -p ci-out
+          cp /tmp/build.log ci-out/build.log
+          cp /tmp/errors.txt ci-out/errors.txt
+          git add ci-out/build.log ci-out/errors.txt
+          git commit -m "CI diagnostics for ${GITHUB_SHA}"
+          git push -f origin ci-diagnostics
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
