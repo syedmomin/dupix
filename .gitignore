@@ -9,3 +9,7 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# scratch logs
+job.log
+build.log
