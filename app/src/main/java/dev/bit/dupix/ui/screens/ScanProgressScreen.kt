@@ -1,16 +1,14 @@
 package dev.bit.dupix.ui.screens
 
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.togetherWith
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -24,8 +22,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import dev.bit.dupix.domain.model.ScanProgress
 import dev.bit.dupix.ui.ScanViewModel
-import dev.bit.dupix.ui.components.AnimatedProgressRing
 import dev.bit.dupix.ui.components.PrimaryButton
+import dev.bit.dupix.ui.components.SvgScanLoader
 
 @Composable
 fun ScanProgressScreen(
@@ -57,43 +55,44 @@ fun ScanProgressScreen(
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
         )
-        Spacer(Modifier.height(28.dp))
+        Spacer(Modifier.height(20.dp))
 
-        AnimatedContent(
-            targetState = progress,
-            transitionSpec = { fadeIn(tween(250)) togetherWith fadeOut(tween(250)) },
-            label = "scanProgressState",
-        ) { p ->
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                when (p) {
-                    is ScanProgress.Hashing -> {
-                        val fraction = if (p.total > 0) p.processed.toFloat() / p.total else 0f
-                        AnimatedProgressRing(progress = fraction.coerceIn(0f, 1f))
-                        Text(
-                            "Analyzing for duplicates…\n${p.processed} / ${p.total}",
-                            textAlign = TextAlign.Center,
-                            style = MaterialTheme.typography.titleMedium,
-                            modifier = Modifier.padding(top = 24.dp),
-                        )
-                    }
-                    is ScanProgress.Enumerating -> {
-                        AnimatedProgressRing(progress = null)
-                        Text(
-                            "Finding files…\n${p.filesFound} files found",
-                            textAlign = TextAlign.Center,
-                            style = MaterialTheme.typography.titleMedium,
-                            modifier = Modifier.padding(top = 24.dp),
-                        )
-                    }
-                    else -> {
-                        AnimatedProgressRing(progress = null)
-                        Text(
-                            "Preparing…",
-                            style = MaterialTheme.typography.titleMedium,
-                            modifier = Modifier.padding(top = 24.dp),
-                        )
-                    }
-                }
+        // Animated scanner illustration (assets/scanner.svg).
+        SvgScanLoader(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(328f / 208f),
+        )
+        Spacer(Modifier.height(24.dp))
+
+        when (val p = progress) {
+            is ScanProgress.Hashing -> {
+                val fraction = if (p.total > 0) p.processed.toFloat() / p.total else 0f
+                Text(
+                    "Analyzing for duplicates…",
+                    style = MaterialTheme.typography.titleMedium,
+                )
+                Spacer(Modifier.height(12.dp))
+                LinearProgressIndicator(
+                    progress = { fraction.coerceIn(0f, 1f) },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Text(
+                    "${p.processed} / ${p.total}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
+            }
+            is ScanProgress.Enumerating -> {
+                Text(
+                    "Finding files…\n${p.filesFound} files found",
+                    textAlign = TextAlign.Center,
+                    style = MaterialTheme.typography.titleMedium,
+                )
+            }
+            else -> {
+                Text("Preparing…", style = MaterialTheme.typography.titleMedium)
             }
         }
     }
