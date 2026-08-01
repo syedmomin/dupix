@@ -14,7 +14,6 @@ import dev.bit.dupix.R
 import dev.bit.dupix.domain.ScanManager
 import dev.bit.dupix.domain.model.ScanProgress
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
@@ -32,7 +31,6 @@ class ScanService : Service() {
     @Inject lateinit var scanManager: ScanManager
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
-    private var runJob: Job? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -40,7 +38,11 @@ class ScanService : Service() {
         createChannel()
         startForeground(NOTIF_ID, buildNotification("Preparing scan…", indeterminate = true))
 
-        // Mirror progress into the notification.
+        // The scan itself runs on ScanManager's app-scoped coroutine, so it survives even
+        // if this service is stopped/restarted. Here we only keep the process alive and
+        // mirror progress into the notification.
+        scanManager.start()
+
         scope.launch {
             scanManager.state.collect { progress ->
                 val nm = getSystemService(NotificationManager::class.java)
@@ -49,10 +51,6 @@ class ScanService : Service() {
                     stopForegroundAndSelf()
                 }
             }
-        }
-
-        if (runJob?.isActive != true) {
-            runJob = scope.launch { scanManager.execute() }
         }
         return START_NOT_STICKY
     }
