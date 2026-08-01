@@ -13,3 +13,5 @@ local.properties
 # scratch logs
 job.log
 build.log
+bl.zip
+*.zip
