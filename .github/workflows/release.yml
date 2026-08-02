@@ -60,11 +60,9 @@ jobs:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-          GRADLE_OPTS: >-
-            -Dorg.gradle.jvmargs='-Xmx6g -XX:MaxMetaspaceSize=1g -Dfile.encoding=UTF-8'
-            -Dkotlin.daemon.jvmargs='-Xmx3g'
         run: |
           set -o pipefail
+          # Memory comes from gradle.properties; nested-quote GRADLE_OPTS breaks gradlew.
           ./gradlew :app:bundleRelease :app:assembleRelease \
             --no-daemon --stacktrace --console=plain --max-workers=2 2>&1 | tee release-build.log
 

@@ -135,11 +135,10 @@ jobs:
           KEY_ALIAS: ${{ env.SIGN_KEY_ALIAS }}
           KEY_PASSWORD: ${{ env.SIGN_KEY_PASSWORD }}
           VERSION_NAME: 1.0.${{ github.run_number }}
-          GRADLE_OPTS: >-
-            -Dorg.gradle.jvmargs='-Xmx6g -XX:MaxMetaspaceSize=1g -Dfile.encoding=UTF-8'
-            -Dkotlin.daemon.jvmargs='-Xmx3g'
         run: |
           set -o pipefail
+          # JVM/daemon memory comes from gradle.properties; do NOT set GRADLE_OPTS
+          # with nested quotes here — it corrupts the gradlew java invocation.
           ./gradlew :app:bundleRelease \
             --no-daemon --stacktrace --console=plain --max-workers=2 2>&1 | tee aab-build.log
 
