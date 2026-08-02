@@ -12,7 +12,6 @@ import dev.bit.dupix.data.scanner.MediaStoreScanner
 import dev.bit.dupix.data.scanner.SafScanner
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
-import android.os.Environment
 import javax.inject.Inject
 
 /**
@@ -33,9 +32,8 @@ class ScanRepository @Inject constructor(
         val allEnumerated = ArrayList<FileItem>()
 
         if (config.deepScan) {
-            // Full-device walk: one pass, then bucket everything by category.
-            val root = Environment.getExternalStorageDirectory()
-            val all = fileTreeScanner.scan(root) { count ->
+            // Full-device walk across all volumes (internal + SD card); bucket by category.
+            val all = fileTreeScanner.scan { count ->
                 // Reuse the Enumerating event to show a live running count.
                 emit(ScanProgress.Enumerating(FileCategory.LARGE_FILE, count))
             }
