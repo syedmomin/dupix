@@ -15,3 +15,8 @@ job.log
 build.log
 bl.zip
 *.zip
+
+# release output + signing key — NEVER commit (contains keystore + passwords)
+/dist
+*.jks
+*.keystore
