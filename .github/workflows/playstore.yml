@@ -1,17 +1,23 @@
 name: Play Store AAB
 
-# Manual, on-demand release to Google Play.
-#   1. Builds the signed Android App Bundle (.aab) that Play Console requires.
-#   2. Uploads it to the chosen Play track — but ONLY if the service-account
-#      secret is configured. Without it the job still produces a downloadable
-#      .aab artifact you can upload to Play Console by hand.
+# One-click signed Android App Bundle (.aab) for Google Play.
+#
+# Signing key resolution:
+#   - If the KEYSTORE_BASE64 secret is set, it is used (your stable upload key).
+#   - Otherwise a fresh keystore is generated IN THIS RUN so you still get a
+#     signed .aab with zero setup. That generated keystore is saved as an
+#     artifact ("dupix-generated-keystore") — KEEP IT: Play requires every
+#     future update to be signed with the SAME upload key. Add its values to
+#     repo Secrets after the first run so subsequent builds reuse it.
+#
+# Output artifact: "dupix-release-aab"  ->  app-release.aab  (upload to Play Console)
 #
 # Trigger: Actions tab -> "Play Store AAB" -> Run workflow.
 on:
   workflow_dispatch:
     inputs:
       track:
-        description: 'Play track to publish to'
+        description: 'Play track (only used if auto-publish is configured)'
         required: true
         default: 'internal'
         type: choice
@@ -26,15 +32,15 @@ on:
         default: 'draft'
         type: choice
         options:
-          - draft        # staged, you press "publish" in Play Console
-          - completed    # rolled out immediately (100%)
+          - draft
+          - completed
 
 permissions:
   contents: read
 
 jobs:
   aab:
-    name: Build signed AAB & (optionally) upload to Play
+    name: Build signed AAB
     runs-on: ubuntu-latest
 
     steps:
@@ -61,19 +67,60 @@ jobs:
       - name: Make Gradle wrapper executable
         run: chmod +x ./gradlew
 
-      # Decode the signing keystore from a base64 secret. Play Console rejects an
-      # unsigned bundle, so this secret is REQUIRED here (unlike the debug flows).
-      - name: Decode keystore
+      # Use the provided keystore secret, or generate one so the build always
+      # produces a SIGNED bundle. Signing values are exported to $GITHUB_ENV for
+      # the Gradle build step to read.
+      - name: Prepare signing keystore
         id: keystore
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
-          if [ -z "$KEYSTORE_BASE64" ]; then
-            echo "::error::KEYSTORE_BASE64 secret is not set. A signed AAB is required for Play Store."
-            exit 1
+          KS="$RUNNER_TEMP/dupix-upload.jks"
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "Using keystore from repo secrets."
+            echo "$KEYSTORE_BASE64" | base64 --decode > "$KS"
+            {
+              echo "SIGN_STORE_FILE=$KS"
+              echo "SIGN_STORE_PASSWORD=$KEYSTORE_PASSWORD"
+              echo "SIGN_KEY_ALIAS=$KEY_ALIAS"
+              echo "SIGN_KEY_PASSWORD=$KEY_PASSWORD"
+            } >> "$GITHUB_ENV"
+            echo "generated=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "No KEYSTORE_BASE64 secret; generating a fresh upload keystore for this run."
+            GEN_PASS="dupix-$(date +%s)-$RANDOM"
+            GEN_ALIAS="dupix-upload"
+            echo "::add-mask::$GEN_PASS"
+            keytool -genkeypair -v \
+              -keystore "$KS" \
+              -alias "$GEN_ALIAS" \
+              -keyalg RSA -keysize 2048 -validity 10000 \
+              -storepass "$GEN_PASS" -keypass "$GEN_PASS" \
+              -dname "CN=Dupix, OU=BIT, O=BIT, L=City, ST=State, C=US"
+            # Save the generated keystore + its credentials so it can be reused.
+            mkdir -p generated-keystore
+            cp "$KS" generated-keystore/dupix-upload.jks
+            base64 -w0 "$KS" > generated-keystore/dupix-upload.jks.base64
+            {
+              echo "KEYSTORE_PASSWORD=$GEN_PASS"
+              echo "KEY_ALIAS=$GEN_ALIAS"
+              echo "KEY_PASSWORD=$GEN_PASS"
+              echo ""
+              echo "Add dupix-upload.jks.base64 contents as the KEYSTORE_BASE64 secret,"
+              echo "then the four values above as KEYSTORE_PASSWORD / KEY_ALIAS / KEY_PASSWORD"
+              echo "so every future release reuses this SAME upload key."
+            } > generated-keystore/CREDENTIALS.txt
+            {
+              echo "SIGN_STORE_FILE=$KS"
+              echo "SIGN_STORE_PASSWORD=$GEN_PASS"
+              echo "SIGN_KEY_ALIAS=$GEN_ALIAS"
+              echo "SIGN_KEY_PASSWORD=$GEN_PASS"
+            } >> "$GITHUB_ENV"
+            echo "generated=true" >> "$GITHUB_OUTPUT"
           fi
-          echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/dupix.keystore"
-          echo "path=$RUNNER_TEMP/dupix.keystore" >> "$GITHUB_OUTPUT"
 
       # GitHub Actions expressions can't do arithmetic, so compute in bash. The
       # +1000 offset keeps this above the versionCode=1 local default and any
@@ -81,12 +128,12 @@ jobs:
       - name: Compute version code
         run: echo "VERSION_CODE=$((${{ github.run_number }} + 1000))" >> "$GITHUB_ENV"
 
-      - name: Build release AAB
+      - name: Build signed release AAB
         env:
-          KEYSTORE_FILE: ${{ steps.keystore.outputs.path }}
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          KEYSTORE_FILE: ${{ env.SIGN_STORE_FILE }}
+          KEYSTORE_PASSWORD: ${{ env.SIGN_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ env.SIGN_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ env.SIGN_KEY_PASSWORD }}
           VERSION_NAME: 1.0.${{ github.run_number }}
           GRADLE_OPTS: >-
             -Dorg.gradle.jvmargs='-Xmx6g -XX:MaxMetaspaceSize=1g -Dfile.encoding=UTF-8'
@@ -105,6 +152,7 @@ jobs:
             exit 1
           fi
           echo "path=$AAB" >> "$GITHUB_OUTPUT"
+          echo "Built signed bundle:"
           ls -la "$AAB"
 
       - name: Upload AAB artifact
@@ -114,6 +162,16 @@ jobs:
           path: ${{ steps.aab.outputs.path }}
           if-no-files-found: error
 
+      # Only present when the run generated its own key — keep it to reuse later.
+      - name: Upload generated keystore
+        if: steps.keystore.outputs.generated == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: dupix-generated-keystore
+          path: generated-keystore/*
+          retention-days: 7
+          if-no-files-found: warn
+
       - name: Upload build log on failure
         if: failure()
         uses: actions/upload-artifact@v4
@@ -122,19 +180,18 @@ jobs:
           path: aab-build.log
           if-no-files-found: warn
 
-      # Optional: push the bundle to Google Play. Runs only when the
-      # PLAY_SERVICE_ACCOUNT_JSON secret exists; otherwise download the artifact
-      # above and upload it manually in Play Console.
+      # Optional auto-publish to Play (needs PLAY_SERVICE_ACCOUNT_JSON secret AND
+      # a stable keystore in secrets). Skipped otherwise.
       - name: Check for Play credentials
         id: play
         env:
           SA: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
         run: |
-          if [ -n "$SA" ]; then
+          if [ -n "$SA" ] && [ "${{ steps.keystore.outputs.generated }}" = "false" ]; then
             echo "enabled=true" >> "$GITHUB_OUTPUT"
           else
             echo "enabled=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::PLAY_SERVICE_ACCOUNT_JSON not set — skipping auto-upload. Download the dupix-release-aab artifact and upload it in Play Console."
+            echo "::notice::Auto-publish skipped. Download the dupix-release-aab artifact and upload it in Play Console."
           fi
 
       - name: Write service account file
