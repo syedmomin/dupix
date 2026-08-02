@@ -97,6 +97,7 @@ Potential Space Recovery
 * Storage Access Framework / MediaStore APIs
 * Feature graphic: "Free Up Storage in Minutes"
 
+
 ### One important note
 
 A focused promise such as **"Find and remove duplicate photos, videos, documents, and large files to recover storage space"** is more accurate and more likely to comply with Play Store policies.

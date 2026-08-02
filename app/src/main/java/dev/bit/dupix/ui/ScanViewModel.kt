@@ -10,6 +10,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.bit.dupix.data.local.TrashEntry
 import dev.bit.dupix.data.repository.DeleteRepository
+import dev.bit.dupix.data.repository.RecoverRepository
 import dev.bit.dupix.data.repository.ScanConfig
 import dev.bit.dupix.data.repository.StorageRepository
 import dev.bit.dupix.data.repository.TrashRepository
@@ -37,6 +38,7 @@ class ScanViewModel @Inject constructor(
     private val storageRepository: StorageRepository,
     private val deleteRepository: DeleteRepository,
     private val trashRepository: TrashRepository,
+    private val recoverRepository: RecoverRepository,
     private val resolver: ContentResolver,
 ) : ViewModel() {
 
@@ -115,6 +117,12 @@ class ScanViewModel @Inject constructor(
     suspend fun purge(entry: TrashEntry) = trashRepository.purge(entry)
 
     suspend fun emptyBin() = trashRepository.emptyBin()
+
+    // --- Recover recently-trashed media (system trash, ~30 days) ----------------------
+    suspend fun trashedMedia(): List<FileItem> = recoverRepository.trashedMedia()
+
+    fun buildUntrashRequest(items: List<FileItem>): android.content.IntentSender? =
+        recoverRepository.createUntrashRequest(items)
 
     /** Removes [uris] from the working result after a confirmed deletion. */
     fun onDeleted(uris: Set<Uri>) {

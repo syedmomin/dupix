@@ -11,6 +11,7 @@ import dev.bit.dupix.ui.ScanViewModel
 import dev.bit.dupix.ui.screens.GroupListScreen
 import dev.bit.dupix.ui.screens.HomeScreen
 import dev.bit.dupix.ui.screens.LargeFilesScreen
+import dev.bit.dupix.ui.screens.RecoverScreen
 import dev.bit.dupix.ui.screens.RecycleBinScreen
 import dev.bit.dupix.ui.screens.ResultsScreen
 import dev.bit.dupix.ui.screens.ScanProgressScreen
@@ -86,11 +87,16 @@ fun DupixNavHost(vm: ScanViewModel) {
             SettingsScreen(
                 onBack = { nav.popBackStack() },
                 onOpenRecycleBin = { nav.navigate(Screen.RecycleBin.route) },
+                onOpenRecover = { nav.navigate(Screen.Recover.route) },
             )
         }
 
         composable(Screen.RecycleBin.route) {
             RecycleBinScreen(vm = vm, onBack = { nav.popBackStack() })
+        }
+
+        composable(Screen.Recover.route) {
+            RecoverScreen(vm = vm, onBack = { nav.popBackStack() })
         }
     }
 }

@@ -11,6 +11,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.RestoreFromTrash
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -29,6 +31,7 @@ import androidx.compose.ui.unit.dp
 fun SettingsScreen(
     onBack: () -> Unit,
     onOpenRecycleBin: () -> Unit,
+    onOpenRecover: () -> Unit,
 ) {
     Scaffold(
         topBar = {
@@ -46,25 +49,18 @@ fun SettingsScreen(
             modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Card(
-                modifier = Modifier.fillMaxWidth().clickable(onClick = onOpenRecycleBin),
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                    Column(Modifier.weight(1f).padding(start = 12.dp)) {
-                        Text("Recycle Bin", style = MaterialTheme.typography.titleMedium)
-                        Text(
-                            "Restore files you deleted in Dupix",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    Icon(Icons.Default.ChevronRight, contentDescription = null)
-                }
-            }
+            SettingRow(
+                icon = Icons.Default.Delete,
+                title = "Recycle Bin",
+                subtitle = "Restore files you deleted in Dupix",
+                onClick = onOpenRecycleBin,
+            )
+            SettingRow(
+                icon = Icons.Default.RestoreFromTrash,
+                title = "Recover Deleted",
+                subtitle = "Restore photos/videos still in the system trash (~30 days)",
+                onClick = onOpenRecover,
+            )
 
             Text("Dupix", style = MaterialTheme.typography.titleLarge)
             Text(
@@ -76,6 +72,32 @@ fun SettingsScreen(
                 "Files you delete are moved to the Recycle Bin (and photos/videos to the system trash), so they can be restored. Other apps' internal storage can't be accessed.",
                 style = MaterialTheme.typography.bodySmall,
             )
+        }
+    }
+}
+
+@Composable
+private fun SettingRow(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    onClick: () -> Unit,
+) {
+    Card(modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+            Column(Modifier.weight(1f).padding(start = 12.dp)) {
+                Text(title, style = MaterialTheme.typography.titleMedium)
+                Text(
+                    subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Icon(Icons.Default.ChevronRight, contentDescription = null)
         }
     }
 }
