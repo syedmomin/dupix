@@ -75,12 +75,19 @@ jobs:
           echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/dupix.keystore"
           echo "path=$RUNNER_TEMP/dupix.keystore" >> "$GITHUB_OUTPUT"
 
+      # GitHub Actions expressions can't do arithmetic, so compute in bash. The
+      # +1000 offset keeps this above the versionCode=1 local default and any
+      # earlier manual upload, so Play always treats the bundle as an upgrade.
+      - name: Compute version code
+        run: echo "VERSION_CODE=$((${{ github.run_number }} + 1000))" >> "$GITHUB_ENV"
+
       - name: Build release AAB
         env:
           KEYSTORE_FILE: ${{ steps.keystore.outputs.path }}
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          VERSION_NAME: 1.0.${{ github.run_number }}
           GRADLE_OPTS: >-
             -Dorg.gradle.jvmargs='-Xmx6g -XX:MaxMetaspaceSize=1g -Dfile.encoding=UTF-8'
             -Dkotlin.daemon.jvmargs='-Xmx3g'
