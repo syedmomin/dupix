@@ -36,9 +36,6 @@ jobs:
           gradle-version: '8.9'
           validate-wrappers: false
 
-      - name: Make Gradle wrapper executable
-        run: chmod +x ./gradlew
-
       # Decode the signing keystore from a base64 secret, if configured. Without these
       # secrets the release is built unsigned (fine for testing, NOT for Play upload).
       - name: Decode keystore
@@ -62,8 +59,9 @@ jobs:
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
           set -o pipefail
-          # Memory comes from gradle.properties; nested-quote GRADLE_OPTS breaks gradlew.
-          ./gradlew :app:bundleRelease :app:assembleRelease \
+          # Use the `gradle` binary from setup-gradle (like ci.yml); the committed
+          # wrapper fails to launch on the runner. Memory comes from gradle.properties.
+          gradle :app:bundleRelease :app:assembleRelease \
             --no-daemon --stacktrace --console=plain --max-workers=2 2>&1 | tee release-build.log
 
       - name: Collect artifacts

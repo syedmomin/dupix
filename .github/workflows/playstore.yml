@@ -64,9 +64,6 @@ jobs:
           gradle-version: '8.9'
           validate-wrappers: false
 
-      - name: Make Gradle wrapper executable
-        run: chmod +x ./gradlew
-
       # Use the provided keystore secret, or generate one so the build always
       # produces a SIGNED bundle. Signing values are exported to $GITHUB_ENV for
       # the Gradle build step to read.
@@ -137,9 +134,10 @@ jobs:
           VERSION_NAME: 1.0.${{ github.run_number }}
         run: |
           set -o pipefail
-          # JVM/daemon memory comes from gradle.properties; do NOT set GRADLE_OPTS
-          # with nested quotes here — it corrupts the gradlew java invocation.
-          ./gradlew :app:bundleRelease \
+          # Use the `gradle` binary from setup-gradle (like ci.yml), NOT ./gradlew —
+          # the committed wrapper fails to launch on this runner. Memory comes from
+          # gradle.properties.
+          gradle :app:bundleRelease \
             --no-daemon --stacktrace --console=plain --max-workers=2 2>&1 | tee aab-build.log
 
       - name: Locate AAB
