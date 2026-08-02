@@ -8,9 +8,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import dev.bit.dupix.data.local.TrashEntry
 import dev.bit.dupix.data.repository.DeleteRepository
 import dev.bit.dupix.data.repository.ScanConfig
 import dev.bit.dupix.data.repository.StorageRepository
+import dev.bit.dupix.data.repository.TrashRepository
 import dev.bit.dupix.domain.ScanManager
 import dev.bit.dupix.domain.model.DuplicateGroup
 import dev.bit.dupix.domain.model.FileCategory
@@ -34,6 +36,7 @@ class ScanViewModel @Inject constructor(
     private val scanManager: ScanManager,
     private val storageRepository: StorageRepository,
     private val deleteRepository: DeleteRepository,
+    private val trashRepository: TrashRepository,
     private val resolver: ContentResolver,
 ) : ViewModel() {
 
@@ -96,6 +99,22 @@ class ScanViewModel @Inject constructor(
 
     /** Deletes SAF-sourced items directly; returns bytes freed. */
     suspend fun deleteSaf(items: List<FileItem>): Long = deleteRepository.deleteSaf(items)
+
+    /** Moves file:// items to the Dupix recycle bin (recoverable). Returns bytes moved. */
+    suspend fun trashFiles(items: List<FileItem>): Long = trashRepository.trashFiles(items)
+
+    // --- Recycle bin -----------------------------------------------------------------
+    suspend fun recycleBin(): List<TrashEntry> = trashRepository.all()
+
+    suspend fun restore(entry: TrashEntry): Boolean {
+        val ok = trashRepository.restore(entry)
+        if (ok) refreshStorage()
+        return ok
+    }
+
+    suspend fun purge(entry: TrashEntry) = trashRepository.purge(entry)
+
+    suspend fun emptyBin() = trashRepository.emptyBin()
 
     /** Removes [uris] from the working result after a confirmed deletion. */
     fun onDeleted(uris: Set<Uri>) {

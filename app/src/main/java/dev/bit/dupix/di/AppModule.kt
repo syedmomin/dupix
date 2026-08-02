@@ -27,10 +27,15 @@ object AppModule {
     @Provides
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): DupixDatabase =
-        Room.databaseBuilder(context, DupixDatabase::class.java, "dupix.db").build()
+        Room.databaseBuilder(context, DupixDatabase::class.java, "dupix.db")
+            .fallbackToDestructiveMigration()
+            .build()
 
     @Provides
     fun provideHashCacheDao(db: DupixDatabase): HashCacheDao = db.hashCacheDao()
+
+    @Provides
+    fun provideTrashDao(db: DupixDatabase): dev.bit.dupix.data.local.TrashDao = db.trashDao()
 
     @Provides
     @Singleton

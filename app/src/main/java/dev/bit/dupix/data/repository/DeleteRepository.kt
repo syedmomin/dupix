@@ -19,15 +19,15 @@ class DeleteRepository @Inject constructor(
     private val resolver: ContentResolver,
 ) {
     /**
-     * Builds a system delete-confirmation request for [items] backed by MediaStore.
-     * The caller launches the returned [IntentSender] via ActivityResult and, on OK,
-     * the OS has already deleted the files.
+     * Builds a system TRASH request for MediaStore-backed [items] — the OS moves them to
+     * the recoverable trash (restorable for ~30 days via Google Photos / Files), not a
+     * permanent delete. The caller launches the returned [IntentSender].
      * @return null if none of the items are MediaStore-backed.
      */
     fun createMediaDeleteRequest(items: List<FileItem>): IntentSender? {
         val uris: List<Uri> = items.mapNotNull { if (it.mediaId != null) it.uri else null }
         if (uris.isEmpty()) return null
-        return MediaStore.createDeleteRequest(resolver, uris).intentSender
+        return MediaStore.createTrashRequest(resolver, uris, true).intentSender
     }
 
     /**

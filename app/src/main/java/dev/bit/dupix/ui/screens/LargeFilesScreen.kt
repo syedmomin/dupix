@@ -81,10 +81,17 @@ fun LargeFilesScreen(
         deleting = true
         scope.launch {
             val media = items.filter { it.mediaId != null }
-            val saf = items.filter { it.mediaId == null }
-            if (saf.isNotEmpty()) {
-                vm.deleteSaf(saf)
-                val uris = saf.map { it.uri }.toSet()
+            val fileItems = items.filter { it.mediaId == null && it.uri.scheme == "file" }
+            val safDocs = items.filter { it.mediaId == null && it.uri.scheme != "file" }
+            if (fileItems.isNotEmpty()) {
+                vm.trashFiles(fileItems) // recoverable via Recycle Bin
+                val uris = fileItems.map { it.uri }.toSet()
+                vm.onDeleted(uris)
+                uris.forEach { selected.remove(it) }
+            }
+            if (safDocs.isNotEmpty()) {
+                vm.deleteSaf(safDocs)
+                val uris = safDocs.map { it.uri }.toSet()
                 vm.onDeleted(uris)
                 uris.forEach { selected.remove(it) }
             }

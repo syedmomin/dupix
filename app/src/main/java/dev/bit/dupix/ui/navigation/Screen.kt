@@ -7,6 +7,7 @@ sealed class Screen(val route: String) {
     data object Results : Screen("results")
     data object Large : Screen("large")
     data object Settings : Screen("settings")
+    data object RecycleBin : Screen("recyclebin")
     data object Group : Screen("group/{category}") {
         fun route(category: String) = "group/$category"
     }
